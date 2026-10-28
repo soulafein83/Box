@@ -3,6 +3,8 @@ Title: [NPU][MediaTek MT6989] Second message in an existing Conversation returns
 Labels: bug, npu
 -->
 
+> **Published:** https://github.com/google-ai-edge/LiteRT-LM/issues/4256
+
 ### Summary
 
 On a MediaTek Dimensity 9300+ (MT6989) with the official MT6989 NPU bundle

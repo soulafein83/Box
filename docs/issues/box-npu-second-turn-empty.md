@@ -3,6 +3,8 @@ Title: NPU (MT6989): second message in the same chat returns an empty reply; the
 Labels: bug
 -->
 
+> **Published:** https://github.com/jegly/Box/issues/190
+
 **Describe the bug:**
 
 On a MediaTek Dimensity 9300+ (MT6989) with the official MT6989 NPU bundle
