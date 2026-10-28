@@ -73,7 +73,8 @@ model_path: .../__imports/Gemma3-1B-IT_q4_ekv1280_mt6989-1.litertlm
    (1.0.20, `litertlm` 0.18.0) with the same bundle. A conversation that is
    *created fresh* with the same history (`initialMessages`) answers correctly,
    so the engine and the NPU bundle are fine; only the second turn of a live
-   conversation fails. Tracked upstream as a LiteRT-LM issue.
+   conversation fails. This points at LiteRT-LM rather than at Box, so it is
+   being reported there separately.
 
 2. **The workaround implemented in Box cannot work as written.** The "NPU window
    slide" path calls `engine.createConversation(...)` while the previous
