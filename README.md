@@ -6,7 +6,7 @@
 [![Version](https://img.shields.io/badge/UpstreamVersion-1.0.15-BD93F9.svg)](https://github.com/jegly/Box/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-8BE9FD.svg)](LICENSE)
 ![GitHub all releases](https://img.shields.io/github/downloads/jegly/Box/total)
-[![Android](https://img.shields.io/badge/Android-14%2B-50FA7B.svg?logo=android&logoColor=white)](https://developer.android.com)
+[![Android](https://img.shields.io/badge/Android-15%2B-50FA7B.svg?logo=android&logoColor=white)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-90.4%25-BD93F9.svg?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Hybrid Engine](https://img.shields.io/badge/Engine-LiteRT%20%2B%20llama.cpp-BD93F9.svg)]()
 [![llama.cpp](https://img.shields.io/badge/llama.cpp-GGUF-FFB86C.svg)](https://github.com/ggerganov/llama.cpp)
@@ -466,21 +466,59 @@ A toggle in Settings forces the app into a fully airgapped state — all downloa
 
 ### Requirements
 
-- Android 14+
+**Device**
+
+- Android 15+ (`minSdk = 35`). Android 14 is **not** supported by this source tree, despite the older release notes below.
 - ~4 GB of free storage for a typical quantised LLM
 - 6 GB of RAM (8 GB for Bonsai image generation)
+
+**Build host**
+
+| Tool | Version | Source of truth |
+|---|---|---|
+| JDK | 17+ (21 recommended) | `jdk21-openjdk`, or the JBR bundled with Android Studio |
+| Android Gradle Plugin | 9.4.1 | `Android/src/gradle/libs.versions.toml` |
+| Gradle | 9.8.2 | `Android/src/gradle/wrapper/gradle-wrapper.properties` |
+| Kotlin | 2.4.21 | `Android/src/gradle/libs.versions.toml` |
+| Android SDK platform | 36 (`compileSdk = 36`) | `sdkmanager "platforms;android-36"` |
+| Android build-tools | 36.0.0 | `sdkmanager "build-tools;36.0.0"` |
+| Android NDK | 27.2.12479018 | `sdkmanager "ndk;27.2.12479018"` |
+| CMake | 3.22.1 | `sdkmanager "cmake;3.22.1"` |
+
+`targetSdk` is 37 (`AndroidManifest.xml` still declares 36; the Gradle value wins). Reserve roughly 25–35 GB of disk for the SDK, NDK, Gradle cache and native build output.
 
 ### Build from source
 
 ```bash
-git clone --recurse-submodules https://github.com/jegly/box
-cd box/Android
-./gradlew :app:assembleDebug
+git clone --recurse-submodules https://github.com/jegly/Box
+cd Box/Android/src
+
+export JAVA_HOME=/path/to/jdk-21
+export ANDROID_HOME=$HOME/Android/Sdk
+echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+# Debug build for one ABI only — much faster than building all seven CPU variants
+./gradlew :app:assembleDebug -Pandroid.injected.build.abi=arm64-v8a
 ```
 
-The `--recurse-submodules` flag is required to pull llama.cpp, stable-diffusion.cpp, and whisper.cpp submodules. The first build compiles all three native libraries from source — expect 15–25 minutes. 
+The Gradle root is **`Android/src`**, not `Android/`. Open `Android/src/` in Android Studio.
 
-Open `Android/` in Android Studio and run on a physical device for best performance.
+Notes:
+
+- The first build compiles llama.cpp, stable-diffusion.cpp and whisper.cpp from source. A cold build with all ABIs can take 30+ minutes.
+- `gradle.properties` sets `org.gradle.jvmargs=-Xmx2048m`, which is tight for this project. Raise it to `-Xmx4g` if the Kotlin or R8 step runs out of memory.
+- `--recurse-submodules` is required; without it CMake fails on the missing `llama.cpp`, `stable-diffusion.cpp` or `whisper.cpp` trees.
+
+#### Source status
+
+The application source in this repository corresponds to **v1.0.12** (`versionName = "1.0.12"`, `versionCode = 26`), while the README and release notes describe **v3.5.5-PQC**. Features documented above but **not present** in this source tree include:
+
+- GGUF Vulkan offload and the *Settings → GGUF Models* panel (`GGML_VULKAN`, GPU layers, KV-cache options)
+- per-SoC NPU model mapping (`socToModelFiles`, e.g. `mt6989`)
+- Android 14 support (this tree requires `minSdk 35`)
+- post-quantum release signing (release builds are signed with the debug key)
+
+Building `main` therefore does **not** reproduce the published v3.5.5 APK.
 
 ### Loading a LiteRT/GGUF model 
 
@@ -489,6 +527,8 @@ Open `Android/` in Android Studio and run on a physical device for best performa
 3. Tap **Import** and pick your file
 4. Set a display name and choose CPU / GPU / NPU
 5. The model appears in AI Chat
+
+> **NPU note:** hardware NPU execution requires a `.litertlm` bundle AOT-compiled for the exact SoC (for Dimensity 9300+ / MT6989 that is `Gemma3-1B-IT_q4_ekv1280_mt6989.litertlm`). A generic or other-SoC bundle will either fall back to GPU/CPU or fail to load.
 
 ---
 
