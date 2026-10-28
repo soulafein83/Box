@@ -22,8 +22,8 @@ output.
 - Bundle: `Gemma3-1B-IT_q4_ekv1280_mt6989.litertlm` (1,032,830,976 bytes),
   from `litert-community/Gemma3-1B-IT`
 - Runtime A: `litertlm-android` 0.10.0 (third-party app, logcat attached below)
-- Runtime B: `litertlm-android` 0.18.1 (Edge Gallery 1.0.22, built from source;
-  see "Reproducing on Edge Gallery" — results will be attached here)
+- Runtime B: `litertlm-android` 0.18.1 (Edge Gallery 1.0.22, built from source with
+  the MediaTek dispatch runtime) — **same symptom, see "Results on 0.18.1"**
 - Backend: NPU (MediaTek NeuroPilot), Neuron SDK 8.2.26
 - `MT6989` is listed as a supported SoC in the LiteRT MediaTek guide
   (<https://developers.google.com/edge/litert/next/mediatek>), and LiteRT-LM
@@ -80,6 +80,40 @@ lib/arm64-v8a/libLiteRtDispatch_MediaTek.so
 
 `LlmChatModelHelper` passes `Backend.NPU(nativeLibraryDir = ...)`, so the AAR
 alone is enough. This is what I use for the runtime B measurements below.
+
+### Results on 0.18.1 (Edge Gallery 1.0.22)
+
+Same device, same bundle, fresh install, NPU selected at import time
+(`compatible_accelerators: "NPU"`). Model load succeeds and the dispatch path
+runs entirely on the NPU:
+
+```text
+20:26:57.364 AGLlmChatModelHelper: Preferred backend: NPU(nativeLibraryDir=/data/app/.../com.google.aiedge.gallery.npudbg-.../lib/arm64)
+20:27:00.966 litert: [litert_dispatch_invocation_context.cc:266] Neuron SDK version check passed: bytecode 8.2.26, runtime 8.2.26
+20:27:00.966 litert: [schema_resolver.h:112] There are 26 subgraphs in the bytecode
+20:27:01.260 AGModelManagerViewModel: Model 'Gemma3-1B-IT_q4_ekv1280_mt6989-1.litertlm' initialized successfully
+```
+
+Two turns, sent from the chat screen. The latency shown under each answer is the
+app's own end-to-end measurement for that message:
+
+| Turn | Prompt | Answer | App-reported latency |
+|---|---|---|---|
+| 1 | `Reply with exactly on Word: OK` | `OK` | 135.0 ms |
+| 2 | `Reply with exactly on Word: OK` | *(empty)* | 91.0 ms |
+
+No exception and no error dialog — `onDone` simply arrives with no tokens, so the
+second bubble stays empty. `user_data.pb` of the session stores both user
+messages and no model message for turn 2.
+
+Note: 0.18.1 does not emit the `session_basic.cc: RunPrefillAsync` /
+`RunDecodeAsync` lines at default verbosity (0.10.0 did), so the evidence here is
+the empty message plus the app latency, not a native decode log.
+
+Also, 0.18.1 no longer has the "only one session is supported at a time"
+restriction, so an app can close the old conversation and create a new one. That
+makes a per-turn rebuild workable as a workaround, but the underlying second-turn
+failure is unchanged in this version.
 
 ### Observed logcat (runtime A)
 

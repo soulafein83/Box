@@ -69,8 +69,9 @@ model_path: .../__imports/Gemma3-1B-IT_q4_ekv1280_mt6989-1.litertlm
 ### Two separate problems
 
 1. **The second turn of a live conversation produces no tokens on NPU.** This is
-   not specific to Box: it also reproduces in the upstream Edge Gallery app
-   (1.0.20, `litertlm` 0.18.0) with the same bundle. A conversation that is
+   not specific to Box: it reproduces in the upstream Edge Gallery app
+   (1.0.22, `litertlm` 0.18.1) with the same bundle, where turn 1 answers `OK` in
+   135 ms and turn 2 returns an empty reply in 91 ms. A conversation that is
    *created fresh* with the same history (`initialMessages`) answers correctly,
    so the engine and the NPU bundle are fine; only the second turn of a live
    conversation fails. This points at LiteRT-LM rather than at Box, so it is
