@@ -21,10 +21,15 @@ output.
   4 KB pages
 - Bundle: `Gemma3-1B-IT_q4_ekv1280_mt6989.litertlm` (1,032,830,976 bytes),
   from `litert-community/Gemma3-1B-IT`
-- Runtime A: `litertlm-android` 0.10.0 (Box 3.5.5)
-- Runtime B: `litertlm-android` 0.18.0 (Edge Gallery 1.0.20) — same symptom,
-  reported by the user, no logs captured yet
-- Backend: NPU, Neuron SDK 8.2.26
+- Runtime A: `litertlm-android` 0.10.0 (third-party app, logcat attached below)
+- Runtime B: `litertlm-android` 0.18.1 (Edge Gallery 1.0.22, built from source;
+  see "Reproducing on Edge Gallery" — results will be attached here)
+- Backend: NPU (MediaTek NeuroPilot), Neuron SDK 8.2.26
+- `MT6989` is listed as a supported SoC in the LiteRT MediaTek guide
+  (<https://developers.google.com/edge/litert/next/mediatek>), and LiteRT-LM
+  documents MediaTek NeuroPilot as a supported NPU vendor
+  (<https://developers.google.com/edge/litert/next/litert_lm_npu>), so this is a
+  documented, supported combination.
 
 Engine settings as logged by the runtime:
 
@@ -44,6 +49,37 @@ clear_kv_cache_before_prefill: true
    a reply is produced.
 4. Send the same message again on the same `Conversation`.
 5. `onMessage` is never called; `onDone` fires after ~20 ms.
+
+### Reproducing on Edge Gallery (no shipped MediaTek NPU runtime)
+
+`google-ai-edge/gallery` publishes vendor-specific APKs for Qualcomm
+(`sm8550`, `sm8650`, `sm8750`, `sm8850`) and Google Tensor (`tensor-g5`,
+`tensor-g6`). Those contain the vendor dispatch library, for example:
+
+```text
+# ai-edge-gallery-sm8750.apk (1.0.20)
+lib/arm64-v8a/libLiteRtDispatch_Qualcomm.so
+```
+
+The generic `ai-edge-gallery.apk` and the source tree contain no dispatch
+library at all, and there is **no MediaTek variant**. So to run the MT6989 NPU
+on Edge Gallery you have to build from source and add the MediaTek runtime:
+
+```kotlin
+// Android/src/app/build.gradle.kts
+implementation(libs.litertlm)
+implementation("com.google.ai.edge.litert:litert-npu-runtime-mediatek:2.3.2")
+```
+
+which produces:
+
+```text
+lib/arm64-v8a/libLiteRtCompilerPlugin_MediaTek.so
+lib/arm64-v8a/libLiteRtDispatch_MediaTek.so
+```
+
+`LlmChatModelHelper` passes `Backend.NPU(nativeLibraryDir = ...)`, so the AAR
+alone is enough. This is what I use for the runtime B measurements below.
 
 ### Observed logcat (runtime A)
 
